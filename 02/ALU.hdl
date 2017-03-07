@@ -43,4 +43,31 @@ CHIP ALU {
 
     PARTS:
    // Put you code here:
+   // Preset x
+   Mux16(a=x, b=false, sel=zx, out=setzx);
+   Not16(in=setzx, out=notx);
+   Mux16(a=setzx, b=notx, sel=nx, out=presetx);
+   
+   // Preset y
+   Mux16(a=y, b=false, sel=zy, out=setzy);
+   Not16(in=setzy, out=noty);
+   Mux16(a=setzy, b=noty, sel=ny, out=presety);
+
+   // Choose function using f
+   And16(a=presetx, b=presety, out=xAndy);
+   Add16(a=presetx, b=presety, out=xAddy);
+   Mux16(a=xAndy, b=xAddy, sel=f, out=computation);
+
+   // Postset output
+   Not16(in=computation, out=notcomputation);
+   Mux16(a=computation, b=notcomputation, sel=no, out=out, out[0..7]=lsb8, out[8..15]=msb8, out[15]=msb);
+
+   // Set zr
+   Or8Way(in=lsb8, out=orlsb);
+   Or8Way(in=msb8, out=ormsb);
+   Or(a=orlsb, b=ormsb, out=lsbOrmsb);
+   Not(in=lsbOrmsb, out=zr);
+
+   // Set ng
+   And(a=msb, b=true, out=ng);
 }
