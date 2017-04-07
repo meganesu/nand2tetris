@@ -55,7 +55,7 @@ CHIP CPU {
     // Load A register if A instruction OR if C instruction with d1 == 1
     Not(in=instruction[15], out=notopcode);
     Or(a=notopcode, b=instruction[5], out=notopOrd1);
-    Register(in=aRegin, load=notopOrd1, out=aRegout, out[0..14]=addressM); // A register
+    ARegister(in=aRegin, load=notopOrd1, out=aRegout, out[0..14]=addressM); // A register
 
     // ALU + inputs
     // Load D register if C instruction with d2 == 1
