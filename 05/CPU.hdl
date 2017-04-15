@@ -8,6 +8,7 @@
  * two registers named A and D, and a program counter named PC.
  * The CPU is designed to fetch and execute instructions written in 
  * the Hack machine language. In particular, functions as follows:
+ *
  * Executes the inputted instruction according to the Hack machine 
  * language specification. The D and A in the language specification
  * refer to CPU-resident registers, while M refers to the external
@@ -40,4 +41,101 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
+
+    // Instruction format:
+    // op 1 1 a c1 c2 c3 c4 c5 c6 d1 d2 d3 j1 j2 j3
+
+    //  Mux16(a= ,b= ,sel= ,out= ); 
+    //  Register(in= ,load= ,out= ); 
+    //  ALU(x= ,y= ,zx= ,nx= ,zy= ,ny= ,f= ,no= ,out= ,zr= ,ng= );
+    //  PC(in= ,load= ,inc= ,reset= ,out= ); 
+
+    // Instruction handling
+    Mux16(a=instruction, b=aluout, sel=instruction[15], out=aRegin);
+    // Load A register if A instruction OR if C instruction with d1 == 1
+    Not(in=instruction[15], out=notopcode);
+    Or(a=notopcode, b=instruction[5], out=notopOrd1);
+    ARegister(in=aRegin, load=notopOrd1, out=aRegout, out[0..14]=addressM); // A register
+
+    // ALU + inputs
+    // Load D register if C instruction with d2 == 1
+    And(a=instruction[15], b=instruction[4], out=opcodeAndd2);
+    DRegister(in=aluout, load=opcodeAndd2, out=dRegout); // D register
+    Mux16(a=aRegout, b=inM, sel=instruction[12], out=muxaddrinM);
+    ALU(x=dRegout, y=muxaddrinM, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=aluout, out=outM, zr=zr, ng=ng);
+
+    // Set writeM if opcode == 1 and d3 == 1
+    //   (i.e. it's a C instruction and the M destination bit is set)
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+
+    // Program counter:
+
+    // Load PC: f(jump bits, ALU control outputs)
+    Not(in=instruction[2], out=notj1);
+    Not(in=instruction[1], out=notj2);
+    Not(in=instruction[0], out=notj3);
+    Not(in=zr, out=notzr);
+    Not(in=ng, out=notng);
+
+    // 1) JGT: !j1 && !j2 && j3 && !zr && !ng
+    And(a=notj1, b=notj2, out=notj1notj2);
+    And(a=instruction[0], b=notzr, out=j3notzr);
+    And(a=notj1notj2, b=j3notzr, out= notj1notj2j3notzr);
+    And(a=notj1notj2j3notzr, b=notng, out=loadJGT);
+
+    // 2) JEQ: !j1 && j2 && !j3 && zr && !ng
+    And(a=notj1, b=instruction[1], out=notj1j2);
+    And(a=notj3, b=zr, out=notj3zr);
+    And(a=notj1j2, b=notj3zr, out=notj1j3notj3zr);
+    And(a=notj1j3notj3zr, b=notng, out=loadJEQ);
+
+    // 3) JGE: !j1 && j2 && j3 && !ng
+    // notj1j2
+    And(a=instruction[0], b=notng, out=j3notng);
+    And(a=notj1j2, b=j3notng, out=loadJGE);
+
+    // 4) JLT: j1 && !j2 && !j3 && !zr && ng
+    And(a=instruction[2], b=notj2, out=j1notj2);
+    And(a=notj3, b=notzr, out=notj3notzr);
+    And(a=j1notj2, b=notj3notzr, out=j1notj2notj3notzr);
+    And(a=j1notj2notj3notzr, b=ng, out=loadJLT);
+
+    // 5) JNE: j1 && !j2 && j3 && !zr
+    // j1notj2
+    // j3notzr
+    And(a=j1notj2, b=j3notzr, out=loadJNE);
+
+    // 6) JLE: j1 && j2 && !j3 && ((!zr && ng) || (zr && !ng))
+    And(a=instruction[2], b=instruction[1], out=j1j2);
+    And(a=j1j2, b=notj3, out=j1j2notj3);
+    // ((!zr && ng) || (zr && !ng))
+    And(a=notzr, b=ng, out=notzrng);
+    And(a=zr, b=notng, out=zrnotng);
+    Or(a=notzrng, b=zrnotng, out=notzrngOrzrnotng);
+    And(a=j1j2notj3, b=notzrngOrzrnotng, out=loadJLE);
+
+    // 7) JMP: j1 && j2 && j3
+    // j1j2
+    And(a=j1j2, b=instruction[0], out=loadJMP);
+
+    // Set load = JGT || JEQ || JGE || JLT || JNE || JLE || JMP
+    Or(a=loadJGT, b=loadJEQ, out=load1load2);
+    Or(a=loadJGE, b=loadJLT, out=load3load4);
+    Or(a=loadJNE, b=loadJLE, out=load5load6);
+    Or(a=load1load2, b=load3load4, out=load1load2load3load4);
+    Or(a=load5load6, b=loadJMP, out=load5load6load7);
+    Or(a=load1load2load3load4, b=load5load6load7, out=load);
+
+    // Only use this function for load if it's a C instruction
+    //   Otherwise, instruction[0..2] is just part of the address, not jump
+    And(a=load, b=instruction[15], out=loadAndopcode);
+
+    // Inc PC: only increment if reset == 0 and load == 0
+    Not(in=reset, out=notreset);
+    Not(in=loadAndopcode, out=notloadAndopcode);
+    And(a=notreset, b=notloadAndopcode, out=inc);
+
+    // Program counter register
+    PC(in=aRegout, load=loadAndopcode, inc=inc, reset=reset, out[0..14]=pc); // PC chip
 }

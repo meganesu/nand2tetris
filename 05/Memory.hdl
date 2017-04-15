@@ -28,4 +28,30 @@ CHIP Memory {
 
     PARTS:
     // Put your code here:
+
+    //  RAM16K(in= ,load= ,address= ,out= ); 
+    //  Screen(in= ,load= ,address= ,out= );
+    //  Keyboard(out= );
+
+    // Only set RAM load bit if load is 1 AND address[14] is 0
+    Not(in=address[14], out=notaddr14);
+    And(a=load, b=notaddr14, out=ramload);
+    RAM16K(in=in, load=ramload, address=address[0..13], out=ramout);
+
+    // Only set Screen load bit if load is 1 AND address[14] is 1 AND address[13] is 0
+    Not(in=address[13], out=notaddr13);
+    And(a=address[14], b=notaddr13, out=addr14Notaddr13);
+    And(a=addr14Notaddr13, b=load, out=screenload);
+    Screen(in=in, load=screenload, address=address[0..12], out=screenout);
+
+    Keyboard(out=keyboardout);
+
+
+    // Choose which memory output to use
+    
+    //  Mux16(a= ,b= ,sel= ,out= ); 
+    Mux16(a=ramout, b=screenout, sel=address[14], out=muxramscreen);
+    And(a=address[14], b=address[13], out=addr13Andaddr14);
+    Mux16(a=muxramscreen, b=keyboardout, sel=addr13Andaddr14, out=out);
+
 }
