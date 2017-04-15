@@ -1,7 +1,7 @@
 public class Code {
   // Translate each field into its corresponding binary value
   public String comp(String c) {
-    if (c.equals("0")) return "010101010";
+    if (c.equals("0")) return "0101010";
     else if (c.equals("1")) return "0111111";
     else if (c.equals("-1")) return "0111010";
     else if (c.equals("D")) return "0001100";

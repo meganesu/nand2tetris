@@ -25,7 +25,13 @@ public class HackAssembler {
     System.out.println("Here we go! " + args[0]);
 
     // PART 1: INITIALIZATION
-    Parser parser = new Parser(args[0]);
+    Parser parser;
+    try {
+      parser = new Parser(args[0]);
+    } catch(Exception ex) {
+      ex.printStackTrace();
+      return;
+    }
     Code code = new Code();
     SymbolTable st = new SymbolTable();
 
@@ -39,7 +45,8 @@ public class HackAssembler {
     } catch(IOException ex) {
       ex.printStackTrace();
     }
-
+    
+    
     // Main loop:
     while (parser.advance()) { // Get and parse the next assembly language command.
       // If the command is a label, we don't need to write anything to the file.

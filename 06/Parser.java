@@ -14,7 +14,7 @@ public class Parser {
   String label; // Store the symbol part of the label "command"
   String addr; // Store the address part of the A command
 
-  Parser(String filename) {
+  Parser(String filename) throws FileNotFoundException {
     currentCmd = "";
     cmdType = "";
     dest = "";
@@ -32,6 +32,7 @@ public class Parser {
       currentCmd = null;
     } catch (Exception ex) {
       ex.printStackTrace();
+      throw new FileNotFoundException("File " + filename + " could not be found.");
     }
   }
 
