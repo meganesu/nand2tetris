@@ -46,8 +46,28 @@ public class HackAssembler {
       ex.printStackTrace();
     }
     
-    
-    // Main loop:
+    // PART 2: FIRST PASS
+    // Read all commands, only paying attention to labels and updating symbol table
+    int cmdNum = 0; // Tracks what line number we're on
+    while (parser.advance()) {
+      if (parser.getCmdType() == "label") {
+        // Add the label to the symbol table
+        st.addLabel(parser.label(), cmdNum);
+      }
+      else {
+        cmdNum++;
+      }
+    }
+
+    // PART 3: RESTART READING COMMANDS
+    try {
+      parser = new Parser(args[0]);
+    } catch(Exception ex) {
+      ex.printStackTrace();
+      return;
+    }
+
+    // PART 4: MAIN LOOP
     while (parser.advance()) { // Get and parse the next assembly language command.
       // If the command is a label, we don't need to write anything to the file.
       if (parser.getCmdType() == "label") continue;
@@ -56,9 +76,25 @@ public class HackAssembler {
         String binaryCmd = ""; // The binary string we'll write to .hack file.
 
         if (parser.getCmdType() == "a") {
-          // If A command, translate symbols to binary addresses.
+          // If A command, check to see if it's a number or a symbol.
           String addr = parser.addr();
-          String binaryString = Integer.toBinaryString(Integer.parseInt(addr));
+
+          int addrVal; // int value of addr
+          try {
+            // If addr is already a number, cast it as an int.
+            addrVal = Integer.parseInt(addr);
+          } catch(NumberFormatException ex) {
+            // If it can't be cast, it's because it's a symbol, not a number.
+            // Check to see if symbol is in the symbol table already, add it if it's not
+            st.addVar(addr);
+            addrVal = st.get(addr);
+            if (addrVal == -1) {
+              System.out.println("Something went wrong. " + addr + " not found in symbol table.");
+            }
+          }
+
+          // Translate addrVal to binary
+          String binaryString = Integer.toBinaryString(addrVal);
           binaryCmd = "0000000000000000".substring(binaryString.length()) + binaryString;
         }
 
@@ -66,7 +102,6 @@ public class HackAssembler {
         else if (parser.getCmdType() == "c") {
 
           // Use Code object to translate from parser symbols to binary code
-          System.out.println(parser.comp());
           String c = code.comp(parser.comp());
           String d = code.dest(parser.dest());
           String j = code.jump(parser.jump());
