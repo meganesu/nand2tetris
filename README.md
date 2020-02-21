@@ -14,3 +14,7 @@ Projects for the course by Shimon Schocken and Noam Nisan. (nand2tetris.org)
 1. [Project 11](11)
 1. [Project 12](12)
 1. [Project 13](13)
+
+## How To Run
+
+Download the Nand2Tetris software suite from [https://www.nand2tetris.org/software].
